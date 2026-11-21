@@ -1,2 +1,21 @@
-# karaoke-machine
-a karaoke machine for music direct seeding tool
+# 字母点唱机
+
+打开：https://waizibushiyezi.github.io/karaoke-machine/
+
+A–Z 个人曲库、数字点歌、随机盲盒、在线同步、离线编辑、手机桌面安装、管理员使用统计和更新公告。
+
+每个用户注册自己的账号，曲库互不影响。原网站账号和已同步曲库继续可用，唯一管理员保持不变，管理员注册关闭。顶部“分享软件”可复制入口链接或调用系统分享。
+
+## 手机与离线
+
+苹果用 Safari 的分享菜单添加到主屏幕；安卓用 Chrome 的安装应用或添加到主屏幕。首次联网登录后等待“离线页面已就绪”，才可断网打开和编辑本机曲库。清理浏览器数据后需要重新联网。新网址有独立的本机缓存，旧网址尚未同步的内容请先同步或导出备份。旧桌面图标仍打开旧网址，需要为新网址重新添加一次。
+
+## 托管与更新
+
+此仓库根目录是 GitHub Pages 公共前端，构建版本 277b939c034cacf7。index.html 包含前端代码，sw.js 缓存公共页面与图标，manifest.webmanifest 使用 /karaoke-machine/ 安装范围。
+
+云端 API 继续由原 Sites 项目提供：https://alphabet-songbox.waizibushiyezi.chatgpt.site 。更换前端托管不能保证解决后台的网络或安全规则拦截；若该后台不可达，首次登录、注册和同步不可用，已缓存的曲库可离线使用。
+
+后台源码继续在原 Sites 项目维护。更新时在原源码项目运行 node scripts/build.mjs，同时生成后台构建和 pages/。先发布兼容后台，再将 pages/ 内公共文件更新到本仓库，保留当前网址。前后端使用同一构建摘要，以便管理员为对应版本发布更新公告。
+
+本仓库不保存用户曲库、密码、服务密钥、数据库或登录会话。跨站登录使用绑定本 GitHub Pages 来源的会话，不依赖第三方 Cookie，分享链接不包含登录信息。
