@@ -85,3 +85,8 @@ test('music preview rejects missing/revoked login, invalid URL and wrong origin 
  const req=(link,authorization='Bearer '+'d'.repeat(64),from=origin)=>new Request('https://test.local/api/playlist-preview',{method:'POST',headers:{Origin:from,...(authorization?{Authorization:authorization}:{}),'Content-Type':'application/json'},body:JSON.stringify({link})});
  assert.equal((await handler(req('https://music.163.com/playlist?id=123',''))).status,401);assert.equal(calls,0);assert.equal((await handler(req('https://evil.test/'))).status,400);assert.equal(calls,0);assert.equal((await handler(req('https://music.163.com/playlist?id=123',undefined,'https://evil.test'))).status,403);assert.equal(calls,0);assert.equal((await handler(req('https://music.163.com/playlist?id=123'))).status,401);assert.equal(calls,1);
 });
+
+test('history route forwards authenticated reads and rejects writes through the allowlist',async()=>{
+ let captured;const handler=createHandler(async(url,options)=>{captured={url,options};return Response.json({announcements:[],next:null});});
+ const response=await handler(new Request('https://test.local/api/announcements/history?before=20',{headers:{Origin:origin,Authorization:'Bearer '+'f'.repeat(64)}}));assert.equal(response.status,200);assert.equal(captured.url,'https://alphabet-songbox.waizibushiyezi.chatgpt.site/api/announcements/history?before=20');assert.equal(captured.options.headers.get('Authorization'),'Bearer '+'f'.repeat(64));assert.equal(response.headers.get('Cache-Control'),'no-store');assert.equal((await handler(new Request('https://test.local/api/announcements/history',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:'{}'}))).status,405);
+});
