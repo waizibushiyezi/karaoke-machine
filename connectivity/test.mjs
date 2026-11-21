@@ -57,3 +57,10 @@ test('oversized and non-JSON writes are rejected without reaching the upstream',
  let response=await handle(new Request('https://test.local/api/library',{method:'PUT',headers:{Origin:origin,'Content-Type':'text/plain'},body:'text'}));assert.equal(response.status,415);
  response=await handle(new Request('https://test.local/api/library',{method:'PUT',headers:{Origin:origin,'Content-Type':'application/json'},body:'x'.repeat(5000001)}));assert.equal(response.status,413);
 });
+
+test('library sharing routes are forwarded only through the same authenticated API channel',async()=>{
+ const seen=[];const handle=createHandler(async(url,options)=>{seen.push({url,options});return Response.json({ok:true});});
+ for(const [path,method] of [['/api/library-shares','GET'],['/api/library-shares','POST'],['/api/library-shares/resolve','POST'],['/api/library-shares/import','POST'],['/api/library-shares/revoke','POST']]){
+  const response=await handle(new Request('https://test.local'+path,{method,headers:{Origin:origin,Authorization:'Bearer '+'b'.repeat(64),'Content-Type':'application/json'},...(method==='POST'?{body:'{}'}:{})}));assert.equal(response.status,200);assert.equal(seen.at(-1).url,'https://alphabet-songbox.waizibushiyezi.chatgpt.site'+path);assert.equal(seen.at(-1).options.headers.get('Authorization'),'Bearer '+'b'.repeat(64));
+ }
+});
