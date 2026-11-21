@@ -73,3 +73,15 @@ test('admin account preview and apply routes forward through the fixed allowlist
   assert.equal((await handle(new Request('https://test.local'+path,{headers:{Origin:origin}}))).status,405);
  }
 });
+
+test('music preview verifies app login before contacting a music platform and never forwards app secrets',async()=>{
+ const calls=[];const handler=createHandler(async(url,options)=>{calls.push(url);if(url.endsWith('/api/auth/me')){assert.equal(options.headers.get('Authorization'),'Bearer '+'d'.repeat(64));return Response.json({user:{id:'test-account'}});}assert.equal(options.headers.Authorization,undefined);assert.equal(options.headers.Cookie,undefined);assert.equal(new URL(url).hostname,'music.163.com');return Response.json({code:200,result:{privacy:0,name:'测试歌单',trackCount:1,tracks:[{id:1,name:'测试歌曲',artists:[]}]}});});
+ const req=()=>new Request('https://test.local/api/playlist-preview',{method:'POST',headers:{Origin:origin,Authorization:'Bearer '+'d'.repeat(64),'Content-Type':'application/json'},body:JSON.stringify({link:'https://music.163.com/playlist?id=123'})});
+ const response=await handler(req());assert.equal(response.status,200);assert.equal(response.headers.get('Access-Control-Allow-Origin'),origin);assert.equal(response.headers.get('Cache-Control'),'no-store');assert.equal((await response.json()).playlist.received,1);assert.equal(calls.length,2);
+ for(let i=0;i<11;i++)assert.equal((await handler(req())).status,200);assert.equal((await handler(req())).status,429);
+});
+test('music preview rejects missing/revoked login, invalid URL and wrong origin without external metadata access',async()=>{
+ let calls=0;const handler=createHandler(async(url)=>{calls++;assert(url.endsWith('/api/auth/me'));return Response.json({user:null});});
+ const req=(link,authorization='Bearer '+'d'.repeat(64),from=origin)=>new Request('https://test.local/api/playlist-preview',{method:'POST',headers:{Origin:from,...(authorization?{Authorization:authorization}:{}),'Content-Type':'application/json'},body:JSON.stringify({link})});
+ assert.equal((await handler(req('https://music.163.com/playlist?id=123',''))).status,401);assert.equal(calls,0);assert.equal((await handler(req('https://evil.test/'))).status,400);assert.equal(calls,0);assert.equal((await handler(req('https://music.163.com/playlist?id=123',undefined,'https://evil.test'))).status,403);assert.equal(calls,0);assert.equal((await handler(req('https://music.163.com/playlist?id=123'))).status,401);assert.equal(calls,1);
+});

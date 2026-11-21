@@ -1,11 +1,12 @@
 import http from 'node:http';
+import PlaylistImport from './playlist-import.mjs';
 import {pathToFileURL} from 'node:url';
 
 const UPSTREAM='https://alphabet-songbox.waizibushiyezi.chatgpt.site/api/version';
 const ORIGIN='https://waizibushiyezi.github.io';
 const API_METHODS=new Map([
  ['/api/version',['GET']],['/api/auth/me',['GET']],['/api/auth/login',['POST']],['/api/auth/register',['POST']],['/api/auth/logout',['POST']],
- ['/api/library',['GET','PUT']],['/api/usage',['POST']],['/api/admin/overview',['GET']],['/api/admin/accounts/preview',['POST']],['/api/admin/accounts/apply',['POST']],['/api/admin/announcements',['GET','POST']],
+ ['/api/playlist-preview',['POST']],['/api/library',['GET','PUT']],['/api/usage',['POST']],['/api/admin/overview',['GET']],['/api/admin/accounts/preview',['POST']],['/api/admin/accounts/apply',['POST']],['/api/admin/announcements',['GET','POST']],
  ['/api/announcements/current',['GET']],['/api/announcements/read',['POST']],
  ['/api/library-shares',['GET','POST']],['/api/library-shares/resolve',['POST']],['/api/library-shares/import',['POST']],['/api/library-shares/revoke',['POST']]
 ]);
@@ -15,7 +16,7 @@ const common={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Ref
 const json=(body,status=200)=>Response.json(body,{status,headers:common});
 function cors(response){const headers=new Headers(response.headers);headers.set('Access-Control-Allow-Origin',ORIGIN);headers.set('Vary','Origin');headers.set('Cache-Control','no-store');headers.delete('Set-Cookie');return new Response(response.body,{status:response.status,headers});}
 
-async function accountApi(request,fetchUpstream){
+async function accountApi(request,fetchUpstream,playlistState){
  const url=new URL(request.url),methods=API_METHODS.get(url.pathname);
  if(request.headers.get('Origin')!==ORIGIN)return json({error:'请求来源无效'},403);
  const reply=(body,status)=>cors(json(body,status));
@@ -39,6 +40,18 @@ async function accountApi(request,fetchUpstream){
   body=Buffer.concat(parts);headers.set('Content-Type','application/json');
  }
  try{
+  if(url.pathname==='/api/playlist-preview'){
+   if(!authorization)return reply({error:'请先登录自己的账号'},401);
+   if(body.length>5000)return reply({error:'分享内容过长'},413);
+   let input;try{input=JSON.parse(body.toString());PlaylistImport.parse(input?.link);}catch(e){return reply({error:e.code==='INVALID_LINK'?e.message:'请粘贴有效的歌单链接。'},400);}
+   const me=await fetchUpstream(new URL('/api/auth/me',UPSTREAM).href,{method:'GET',headers,redirect:'error',signal:AbortSignal.timeout(25000)});
+   if(!me.ok||!me.headers.get('Content-Type')?.includes('application/json')){await me.body?.cancel();return reply({error:'账号连接暂时不可用，请稍后重试。'},502);}
+   const account=(await me.json()).user;if(!account?.id)return reply({error:'请先登录自己的账号'},401);
+   const now=Date.now();for(const [id,value]of playlistState.hits)if(value.until<now)playlistState.hits.delete(id);
+   let quota=playlistState.hits.get(account.id);if(!quota){if(playlistState.hits.size>=1000)return reply({error:'当前读取人数较多，请稍后再试。'},429);quota={count:0,until:now+600000};playlistState.hits.set(account.id,quota);}
+   if(quota.count>=12||playlistState.inflight>=4)return reply({error:'读取次数较多或服务繁忙，请稍后再试，或使用粘贴列表。'},429);quota.count++;playlistState.inflight++;
+   try{return reply({playlist:await PlaylistImport.load(input.link,fetchUpstream)},200);}catch(e){return reply({error:e.message},e.code==='INVALID_LINK'?400:422);}finally{playlistState.inflight--;}
+  }
   const target=new URL(url.pathname+url.search,new URL(UPSTREAM).origin);
   const response=await fetchUpstream(target.href,{method:request.method,headers,body,redirect:'error',signal:AbortSignal.timeout(25000)});
   if(!response.headers.get('Content-Type')?.includes('application/json'))return reply({error:'账号服务暂时无法连接，请稍后重试。'},502);
@@ -50,7 +63,7 @@ async function accountApi(request,fetchUpstream){
 }
 
 export function createHandler(fetchUpstream=fetch){
- let cached=null,pending=null;
+ let cached=null,pending=null;const playlistState={hits:new Map(),inflight:0};
  async function check(){
   if(cached&&Date.now()-cached.time<10000)return cached.value;
   if(pending)return pending;
@@ -66,7 +79,7 @@ export function createHandler(fetchUpstream=fetch){
  }
  return async request=>{
   const path=new URL(request.url).pathname;
-  if(path.startsWith('/api/'))return accountApi(request,fetchUpstream);
+  if(path.startsWith('/api/'))return accountApi(request,fetchUpstream,playlistState);
   if(!['GET','HEAD'].includes(request.method))return json({error:'此页面仅用于连接测试，不接收账号信息。'},405);
   if(path==='/health')return json({ok:true,service:'songbox-account-gateway',gateway:true});
   if(path==='/check'){const result=await check();return json(result,result.ok?200:502);}
