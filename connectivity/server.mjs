@@ -6,7 +6,7 @@ const UPSTREAM='https://alphabet-songbox.waizibushiyezi.chatgpt.site/api/version
 const ORIGIN='https://waizibushiyezi.github.io';
 const API_METHODS=new Map([
  ['/api/version',['GET']],['/api/auth/me',['GET']],['/api/auth/login',['POST']],['/api/auth/register',['POST']],['/api/auth/logout',['POST']],
- ['/api/playlist-preview',['POST']],['/api/library',['GET','PUT']],['/api/usage',['POST']],['/api/admin/overview',['GET']],['/api/admin/accounts/preview',['POST']],['/api/admin/accounts/apply',['POST']],['/api/admin/announcements',['GET','POST']],
+ ['/api/playlist-preview',['POST']],['/api/companion',['GET','PUT']],['/api/library',['GET','PUT']],['/api/usage',['POST']],['/api/admin/overview',['GET']],['/api/admin/accounts/preview',['POST']],['/api/admin/accounts/apply',['POST']],['/api/admin/announcements',['GET','POST']],
  ['/api/announcements/current',['GET']],['/api/announcements/history',['GET']],['/api/announcements/read',['POST']],
  ['/api/library-shares',['GET','POST']],['/api/library-shares/resolve',['POST']],['/api/library-shares/import',['POST']],['/api/library-shares/revoke',['POST']]
 ]);
