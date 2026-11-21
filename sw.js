@@ -1,7 +1,7 @@
 const BASE=new URL(self.registration.scope||'/',self.location.origin).pathname;
 const PAGES='pages'==='pages';
 const PREFIX='songbox-shell-'+encodeURIComponent(BASE)+'-';
-const CACHE=PREFIX+'12b858e8c6efb416';
+const CACHE=PREFIX+'aa6031f91616607e';
 const assets=['icon.svg','manifest.webmanifest','icons/icon-180.png','icons/icon-192.png','icons/icon-512.png','icons/icon-maskable-512.png'].map(path=>BASE+path);
 async function isShell(response){return response.ok&&(response.headers.get('X-Songbox-Shell')==='1'||PAGES&&response.headers.get('Content-Type')?.includes('text/html')&&(await response.clone().text()).includes('name="songbox-base" content="'+BASE+'"'));}
 self.addEventListener('install',event=>{event.waitUntil((async()=>{const response=await fetch(BASE,{cache:'reload'});if(!await isShell(response))throw Error('App shell unavailable');const cache=await caches.open(CACHE);await cache.put(BASE,response);await cache.addAll(assets);if(!self.registration.active)await self.skipWaiting();})());});
