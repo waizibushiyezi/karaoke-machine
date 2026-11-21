@@ -64,3 +64,12 @@ test('library sharing routes are forwarded only through the same authenticated A
   const response=await handle(new Request('https://test.local'+path,{method,headers:{Origin:origin,Authorization:'Bearer '+'b'.repeat(64),'Content-Type':'application/json'},...(method==='POST'?{body:'{}'}:{})}));assert.equal(response.status,200);assert.equal(seen.at(-1).url,'https://alphabet-songbox.waizibushiyezi.chatgpt.site'+path);assert.equal(seen.at(-1).options.headers.get('Authorization'),'Bearer '+'b'.repeat(64));
  }
 });
+
+test('admin account preview and apply routes forward through the fixed allowlist',async()=>{
+ const paths=[];const handle=createHandler(async(url,options)=>{paths.push(url);assert.equal(options.method,'POST');assert.equal(options.headers.get('Authorization'),'Bearer '+'c'.repeat(64));return Response.json({ok:true});});
+ for(const path of ['/api/admin/accounts/preview','/api/admin/accounts/apply']){
+  assert.equal((await handle(new Request('https://test.local'+path,{method:'POST',headers:{Origin:origin,Authorization:'Bearer '+'c'.repeat(64),'Content-Type':'application/json'},body:'{}'}))).status,200);
+  assert.equal(paths.at(-1),'https://alphabet-songbox.waizibushiyezi.chatgpt.site'+path);
+  assert.equal((await handle(new Request('https://test.local'+path,{headers:{Origin:origin}}))).status,405);
+ }
+});
