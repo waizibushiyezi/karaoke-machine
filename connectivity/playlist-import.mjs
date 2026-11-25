@@ -36,7 +36,7 @@ const PlaylistImport=(()=>{
   const tracks=[];let invalid=0;const ids=new Set();
   for(const row of raw.slice(0,MAX_TRACKS)){
    const name=clean(provider==='qq'?row?.songname:row?.name),artist=(provider==='qq'?row?.singer:row?.artists||row?.ar);const sourceId=String(provider==='qq'?row?.songid||row?.songmid||'':row?.id||'');
-   if(!name||name.length>200){invalid++;continue;}const key=sourceId||name;if(ids.has(key))continue;ids.add(key);tracks.push({key:String(tracks.length),name,artist:Array.isArray(artist)?artist.map(a=>clean(a?.name)).filter(Boolean).join(' / ').slice(0,240):''});
+   if(!name||name.length>200){invalid++;continue;}const key=sourceId||name;if(ids.has(key))continue;ids.add(key);const mid=typeof row?.songmid==='string'?row.songmid:'';const listenUrl=provider==='qq'?(/^[A-Za-z0-9]{14}$/.test(mid)?'https://y.qq.com/n/ryqq_v2/songDetail/'+mid:''):(/^[1-9]\d{0,19}$/.test(String(row?.id||''))?'https://music.163.com/song?id='+row.id:'');tracks.push({key:String(tracks.length),name,...(listenUrl?{listenUrl}:{}),artist:Array.isArray(artist)?artist.map(a=>clean(a?.name)).filter(Boolean).join(' / ').slice(0,240):''});
   }
   const reported=Number(provider==='qq'?p.total_song_num:p.trackCount),total=Number.isSafeInteger(reported)&&reported>=0?reported:null;
   if(!tracks.length)throw fail('没有读取到可导入的歌曲。歌单可能为空、已关闭或需要平台登录，请改用粘贴列表。');
